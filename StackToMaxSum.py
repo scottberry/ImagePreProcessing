@@ -73,17 +73,23 @@ def project_single_site(base_dir, fname_stub, well_name, timeline_name,
 # -----------------
 
 base_dir = path.join(
-    path.expanduser('~'), 'local', 'Development', 'MaxSum'
+    path.expanduser('~'), 'pelkmans-sc-storage',
+    '20170807-Kim2-NascentRNA-Inhibitors'
 )
-input_dir = 'input'
-output_dir = 'output'
+input_dir = 'ACQ01'
+output_dir = 'MAXSUM'
 
 fname_stub = '20170807-Kim2-NascentRNA-Inhibitors-DAPI-EU-Beads-SE_'
-well_name = 'C11'
+well_name_list = (
+    ['B' + str(i).zfill(2) for i in range(2, 12)] +
+    ['C' + str(i).zfill(2) for i in range(2, 12)] +
+    ['D' + str(i).zfill(2) for i in range(2, 4)]
+)
+
 timeline_name = 'T0001'
 action_name = 'A03'
 z_planes = 16
-n_fields = 2
+n_fields = 48
 
 n_cores = cpu_count()
 
@@ -91,31 +97,32 @@ n_cores = cpu_count()
 input_channel_name = 'C03'
 output_channel_names = ['C03', 'C04']
 
-# Process sites in parallel
-Parallel(n_jobs=n_cores)(
-    delayed(project_single_site)
-    (
-        base_dir, fname_stub,
-        well_name, timeline_name,
-        i, action_name, input_channel_name,
-        output_channel_names, z_planes,
-        input_dir, output_dir
-    ) for i in range(1, n_fields + 1)
-)
+for well_name in well_name_list:
 
-# Map input channel C04 to C05 (max), C06 (sum)
-input_channel_name = 'C04'
-output_channel_names = ['C05', 'C06']
+    # Process sites in parallel
+    Parallel(n_jobs=n_cores)(
+        delayed(project_single_site)
+        (
+            base_dir, fname_stub,
+            well_name, timeline_name,
+            i, action_name, input_channel_name,
+            output_channel_names, z_planes,
+            input_dir, output_dir
+        ) for i in range(1, n_fields + 1)
+    )
 
-# Process sites in parallel
-Parallel(n_jobs=n_cores)(
-    delayed(project_single_site)
-    (
-        base_dir, fname_stub,
-        well_name, timeline_name,
-        i, action_name, input_channel_name,
-        output_channel_names, z_planes,
-        input_dir, output_dir
-    ) for i in range(1, n_fields + 1)
-)
+    # Map input channel C04 to C05 (max), C06 (sum)
+    input_channel_name = 'C04'
+    output_channel_names = ['C05', 'C06']
 
+    # Process sites in parallel
+    Parallel(n_jobs=n_cores)(
+        delayed(project_single_site)
+        (
+            base_dir, fname_stub,
+            well_name, timeline_name,
+            i, action_name, input_channel_name,
+            output_channel_names, z_planes,
+            input_dir, output_dir
+        ) for i in range(1, n_fields + 1)
+    )
