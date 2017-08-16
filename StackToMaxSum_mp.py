@@ -1,17 +1,19 @@
 import warnings
 import logging
+import itertools
 import skimage.io
 import numpy as np
 from os import path, getcwd
 import multiprocessing as mp
+from MultiProcessingLog import MultiProcessingLog
 
 warnings.filterwarnings('ignore')
 
-logger = logging.getLogger('StackToMaxSum.py')
-hdlr = logging.FileHandler(path.join(getcwd(), 'StackToMaxSum.log'))
+logger = logging.getLogger()
+mp_log = MultiProcessingLog(path.join(getcwd(), 'StackToMaxSum.log'), 'a', 0, 0)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
+mp_log.setFormatter(formatter)
+logger.addHandler(mp_log)
 logger.setLevel(logging.INFO)
 
 
@@ -75,73 +77,70 @@ def project_single_site_star(args):
 
 
 def main():
-# Define parameters
-# -----------------
+
+    # Define parameters
+    # -----------------
     base_dir = path.join(
         path.expanduser('~'), 'pelkmans-sc-storage',
         '20170807-Kim2-NascentRNA-Inhibitors'
     )
     input_dir = 'ACQ03'
-    output_dir = 'MAXSUM2'
-    
+    output_dir = 'MAXSUM'
+
     fname_stub = '20170807-Kim2-NascentRNA-Inhibitors-DAPI-EU-Beads-SE-3_'
-    
+
     well_name_list = (
-    #    ['E' + str(i).zfill(2) for i in range(2, 9)] +
-    #    ['F' + str(i).zfill(2) for i in range(2, 9)] +
-        ['G' + str(i).zfill(2) for i in range(7, 9)]
+        ['G' + str(i).zfill(2) for i in range(8, 9)]
+#        ['E' + str(i).zfill(2) for i in range(9, 12)] +
+#        ['F' + str(i).zfill(2) for i in range(9, 12)] +
+#        ['G' + str(i).zfill(2) for i in range(9, 12)]
     )
-    
+
     timeline_name = 'T0002'
     action_name = 'A02'
     l_name = 'L02'
     z_planes = 16
     n_fields = 48
-     
+
     # Map input channel C03 to C03 (max), C04 (sum)
-    #input_channel_name = 'C03'
-    #output_channel_names = ['C03', 'C04']
-    #
-    #for well_name in well_name_list:
-    #
-    #    # Process sites in parallel
-    #    Parallel(n_jobs=n_cores)(
-    #        delayed(project_single_site)
-    #        (
-    #            base_dir, fname_stub,
-    #            well_name, timeline_name,
-    #            i, l_name, action_name, input_channel_name,
-    #            output_channel_names, z_planes,
-    #            input_dir, output_dir
-    #        ) for i in range(1, n_fields + 1)
-    #    )
-    
-    # Map input channel C04 to C05 (max), C06 (sum)
-    input_channel_name = 'C04'
-    output_channel_names = ['C05', 'C06']
-    
+    input_channel_name = 'C03'
+    output_channel_names = ['C03', 'C04']
+
     # create a multiprocessing pool for parallelisation
     pool = mp.Pool()
     fields = range(1, n_fields + 1)
-    pool.map(project_single_site_star,
-        itertools.izip(
-            itertools.repeat(base_dir),
-            itertools.repeat(fname_stub),
-            well_name_list,
-            itertools.repeat(timeline_name),
-            fields,
-            itertools.repeat(l_name),
-            itertools.repeat(action_name),
-            itertools.repeat(input_channel_name),
-            itertools.repeat(output_channel_names),
-            itertools.repeat(z_planes),
-            itertools.repeat(input_dir),
-            itertools.repeat(output_dir)
-        )
+    pool.map(
+        project_single_site_star,
+        [(base_dir, fname_stub,
+            well, timeline_name,
+            site, l_name,
+            action_name, input_channel_name,
+            output_channel_names, z_planes,
+            input_dir, output_dir) for well, site in itertools.product(well_name_list, fields)]
     )
     pool.close()
     pool.join()
 
-if __name__=="__main__":
+    # Map input channel C04 to C05 (max), C06 (sum)
+    input_channel_name = 'C04'
+    output_channel_names = ['C05', 'C06']
+
+    # create a multiprocessing pool for parallelisation
+    pool = mp.Pool()
+    fields = range(1, n_fields + 1)
+    pool.map(
+        project_single_site_star,
+        [(base_dir, fname_stub,
+            well, timeline_name,
+            site, l_name,
+            action_name, input_channel_name,
+            output_channel_names, z_planes,
+            input_dir, output_dir) for well, site in itertools.product(well_name_list, fields)]
+    )
+    pool.close()
+    pool.join()
+
+
+if __name__ == "__main__":
     mp.freeze_support()
     main()
