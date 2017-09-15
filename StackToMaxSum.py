@@ -14,15 +14,15 @@ hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
+
 def project_single_site(base_dir, fname_stub, well_name, timeline_name,
-                        field,
+                        field, l_name,
                         action_name, input_channel_name,
                         output_channel_names, z_planes,
                         input_dir, output_dir):
 
     logger.info('Processing channel %s, well %s, site %d',
                 input_channel_name, well_name, field)
-    l_name = 'L01'
     field_name = 'F' + str(field).zfill(3)
 
     image_names = []
@@ -73,49 +73,59 @@ def project_single_site(base_dir, fname_stub, well_name, timeline_name,
 # -----------------
 
 base_dir = path.join(
-    path.expanduser('~'), 'local', 'Development', 'MaxSum'
+    path.expanduser('~'), 'pelkmans-sc-storage',
+    '20170807-Kim2-NascentRNA-Inhibitors'
 )
-input_dir = 'input'
-output_dir = 'output'
+input_dir = 'ACQ03'
+output_dir = 'MAXSUM2'
 
-fname_stub = '20170807-Kim2-NascentRNA-Inhibitors-DAPI-EU-Beads-SE_'
-well_name = 'C11'
-timeline_name = 'T0001'
-action_name = 'A03'
+fname_stub = '20170807-Kim2-NascentRNA-Inhibitors-DAPI-EU-Beads-SE-3_'
+well_name_list = (
+#    ['E' + str(i).zfill(2) for i in range(2, 9)] +
+#    ['F' + str(i).zfill(2) for i in range(2, 9)] +
+    ['G' + str(i).zfill(2) for i in range(7, 9)]
+)
+
+timeline_name = 'T0002'
+action_name = 'A02'
+l_name = 'L02'
 z_planes = 16
-n_fields = 2
+n_fields = 48
 
-n_cores = cpu_count()
+n_cores = cpu_count() - 1
 
 # Map input channel C03 to C03 (max), C04 (sum)
-input_channel_name = 'C03'
-output_channel_names = ['C03', 'C04']
-
-# Process sites in parallel
-Parallel(n_jobs=n_cores)(
-    delayed(project_single_site)
-    (
-        base_dir, fname_stub,
-        well_name, timeline_name,
-        i, action_name, input_channel_name,
-        output_channel_names, z_planes,
-        input_dir, output_dir
-    ) for i in range(1, n_fields + 1)
-)
+#input_channel_name = 'C03'
+#output_channel_names = ['C03', 'C04']
+#
+#for well_name in well_name_list:
+#
+#    # Process sites in parallel
+#    Parallel(n_jobs=n_cores)(
+#        delayed(project_single_site)
+#        (
+#            base_dir, fname_stub,
+#            well_name, timeline_name,
+#            i, l_name, action_name, input_channel_name,
+#            output_channel_names, z_planes,
+#            input_dir, output_dir
+#        ) for i in range(1, n_fields + 1)
+#    )
 
 # Map input channel C04 to C05 (max), C06 (sum)
 input_channel_name = 'C04'
 output_channel_names = ['C05', 'C06']
 
-# Process sites in parallel
-Parallel(n_jobs=n_cores)(
-    delayed(project_single_site)
-    (
-        base_dir, fname_stub,
-        well_name, timeline_name,
-        i, action_name, input_channel_name,
-        output_channel_names, z_planes,
-        input_dir, output_dir
-    ) for i in range(1, n_fields + 1)
-)
+for well_name in well_name_list:
 
+    # Process sites in parallel
+    Parallel(n_jobs=n_cores)(
+        delayed(project_single_site)
+        (
+            base_dir, fname_stub,
+            well_name, timeline_name,
+            i, l_name, action_name, input_channel_name,
+            output_channel_names, z_planes,
+            input_dir, output_dir
+        ) for i in range(1, n_fields + 1)
+    )
