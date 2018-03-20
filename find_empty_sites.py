@@ -80,7 +80,7 @@ def check_site_and_delete(source_dir, fname, delete_empty=False):
                 try:
                     full_path = os.path.join(source_dir,file)
                     logger.info('deleting %s',full_path)
-                    # os.remove(full_path)
+                    os.remove(full_path)
                 except OSError:
                     pass
         else:
