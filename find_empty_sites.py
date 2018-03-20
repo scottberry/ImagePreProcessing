@@ -6,21 +6,18 @@ import logging
 import argparse
 import numpy as np
 import multiprocessing as mp
-import tifffile as tiff
+import imageio
 import os
 import re
+import glob
 from subprocess import check_call, CalledProcessError
 from MultiProcessingLog import MultiProcessingLog
 from jtmodules import smooth, threshold_manual, filter, label
 
-# open DAPI tiff
-# segment DAPI tiff
-# count objects with size > xx
-
 
 warnings.filterwarnings('ignore')
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 def segment_primary(dapi):
@@ -37,7 +34,6 @@ def segment_primary(dapi):
         plot=False
     )
     nuclei = label.main(mask=nucleiMaskFiltered.filtered_mask)
-
     return nuclei
 
 
@@ -47,7 +43,12 @@ def contains_nucleus(dapi):
 
 
 def load_image(source_dir, fname):
-    image = tiff.imread(os.path.join(source_dir,fname))
+    logger.debug('loading image %s from %s',fname, source_dir)
+    try:
+        image = imageio.imread(os.path.join(source_dir,fname))
+    except IOError:
+        logger.info('failed to load %s in %s',fname, source_dir)
+        pass
     return image
 
 
@@ -56,48 +57,57 @@ def list_all_files_same_site(source_dir, fname):
                r'F(?P<site>\d+)L\d+A\d+Z(?P<z>\d+)(?P<c>[C]\d{2})\.')
     matches = re.match(pattern, fname)
     search_string = (r'^' +
-        re.escape(matches.group('stem')) +
-        r'_' + matches.group('well') +
-        r'_T(?P<t>\d+)' +
-        matches.group('site') +
-        r'L\d+A\d+Z(?P<z>\d+)(?P<c>[C]\d{2})\.')
+                     re.escape(matches.group('stem')) +
+                     r'_' + matches.group('well') +
+                     r'_T(?P<t>\d+)' +
+                     r'F' + matches.group('site') +
+                     r'L\d+A\d+Z(?P<z>\d+)(?P<c>[C]\d{2})\.')
+    logger.debug('finding files in %s, in well %s, site %s',
+                 source_dir,
+                 matches.group('well'),
+                 matches.group('site'))
     files = [f for f in os.listdir(source_dir) if re.match(search_string, f)]
     return files
 
 
-def check_image(source_dir, fname, delete_empty=False):
+def check_site_and_delete(source_dir, fname, delete_empty=False):
     dapi = load_image(source_dir,fname)
     if not contains_nucleus(dapi):
-        files = list_all_files_same_site(fname)
+        logger.info('image %s does not contain any nuclei',fname)
+        files = list_all_files_same_site(source_dir,fname)
         if delete_empty:
             for file in files:
                 try:
-                    logger.info('deleting %s',file)
-                    #os.remove(file)
+                    full_path = os.path.join(source_dir,file)
+                    logger.info('deleting %s',full_path)
+                    # os.remove(full_path)
                 except OSError:
                     pass
+        else:
+            print fname
+    else:
+        logger.info('image %s contains > 0 nuclei')
     return
 
 
-
-def convert_single_site_star(args):
-    return convert_single_image(*args)
+def check_site_and_delete_star(args):
+    return check_site_and_delete(*args)
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        prog='convert_tiff_to_png',
-        description=('Converts all files in a directory from TIFF'
-                     ' to 16-bit grayscale PNG files.'
-                     ' The directory structure from source_dir'
-                     ' is re-created in output_dir.')
+        prog='delete_empty_sites',
+        description=('Checks all images in a folder for'
+                     ' nuclei. Sites without any cells'
+                     ' are identified and listed or deleted.'
+                     )
     )
     parser.add_argument(
         '-v', '--verbosity', action='count', default=0,
         help='increase logging verbosity'
     )
     parser.add_argument('source_dir', help='path to source directory')
-    parser.add_argument('output_dir', help='path to output directory')
+    parser.add_argument('--delete', action='store_true', help='delete sites identified as empty')
 
     return(parser.parse_args())
 
@@ -105,10 +115,10 @@ def parse_arguments():
 def main(args):
 
     # setup logging
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s | %(filename)s/%(funcName)s: %(message)s')
     mp_log = MultiProcessingLog(
-        os.path.join(args.output_dir,
-                  'png_conversion-' +
+        os.path.join(args.source_dir,
+                  'find-empty-sites-' +
                   time.strftime('%Y%m%d-%H%M%S') +
                   '.log'),
         'w', 0, 0
@@ -116,39 +126,17 @@ def main(args):
     mp_log.setFormatter(formatter)
     logger.addHandler(mp_log)
 
-    tiff_paths = []
-    output_dirs = []
+    images = [os.path.basename(full_path) for full_path in glob.glob(args.source_dir + '*C01.tif')]
+    dirs = [args.source_dir for image in images]
+    params = [args.delete for image in images]
 
-    # find tiff files and keep track of the source directory structure
-    for root, dirs, files in walk(args.source_dir):
-        for file in files:
-            if file.endswith('.tif'):
-                tiff_paths.append(path.join(root, file))
-                output_dirs.append(
-                    path.join(args.output_dir, root[len(args.source_dir):])
-                )
-
-    # re-create the directory structure in output_dir
-    unique_dirs = list(set(output_dirs))
-    logger.info(
-        'found %d TIFF files in subfolders: %s',
-        len(tiff_paths),
-        unique_dirs)
-    for d in unique_dirs:
-        if not path.exists(d):
-            logger.info('creating output directory: %s',d)
-            makedirs(d)
-        else:
-            logger.info('output directory %s already exists',d)
-
-    # generate list of tuples containing input/output pairs
-    convert_args = zip(tiff_paths, output_dirs)
+    function_args = zip(dirs,images,params)
 
     # use a multi-processing pool to get the work done
     pool = mp.Pool()
     pool.map(
-        convert_single_site_star,
-        convert_args
+        check_site_and_delete_star,
+        function_args
     )
     pool.close()
     pool.join()
