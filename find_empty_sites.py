@@ -70,17 +70,18 @@ def list_all_files_same_site(source_dir, fname):
     return files
 
 
-def check_site_and_delete(source_dir, fname, delete_empty=False):
+def check_site_and_move(source_dir, fname, target_dir, move_empty=False):
     dapi = load_image(source_dir,fname)
     if not contains_nucleus(dapi):
         logger.info('image %s does not contain any nuclei',fname)
         files = list_all_files_same_site(source_dir,fname)
-        if delete_empty:
+        if move_empty:
             for file in files:
                 try:
-                    full_path = os.path.join(source_dir,file)
-                    logger.info('deleting %s',full_path)
-                    os.remove(full_path)
+                    source_path = os.path.join(source_dir,file)
+                    dest_path = os.path.join(target_dir,file)
+                    logger.info('moving %s to %s',file, target_dir)
+                    os.rename(source_path,dest_path)
                 except OSError:
                     pass
         else:
@@ -90,16 +91,16 @@ def check_site_and_delete(source_dir, fname, delete_empty=False):
     return
 
 
-def check_site_and_delete_star(args):
-    return check_site_and_delete(*args)
+def check_site_and_move_star(args):
+    return check_site_and_move(*args)
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        prog='delete_empty_sites',
+        prog='move_empty_sites',
         description=('Checks all images in a folder for'
                      ' nuclei. Sites without any cells'
-                     ' are identified and listed or deleted.'
+                     ' are identified and listed or moved.'
                      )
     )
     parser.add_argument(
@@ -107,7 +108,8 @@ def parse_arguments():
         help='increase logging verbosity'
     )
     parser.add_argument('source_dir', help='path to source directory')
-    parser.add_argument('--delete', action='store_true', help='delete sites identified as empty')
+    parser.add_argument('target_dir', help='path to destination directory')
+    parser.add_argument('--move', action='store_true', help='move sites identified as empty')
 
     return(parser.parse_args())
 
@@ -126,16 +128,20 @@ def main(args):
     mp_log.setFormatter(formatter)
     logger.addHandler(mp_log)
 
-    images = [os.path.basename(full_path) for full_path in glob.glob(args.source_dir + '*C01.tif')]
-    dirs = [args.source_dir for image in images]
-    params = [args.delete for image in images]
+    if args.move and (not os.path.exists(args.target_dir)):
+        os.makedirs(args.target_dir)
 
-    function_args = zip(dirs,images,params)
+    images = [os.path.basename(full_path) for full_path in glob.glob(args.source_dir + '*C01.tif')]
+    source_dirs = [args.source_dir for image in images]
+    target_dirs = [args.target_dir for image in images]
+    params = [args.move for image in images]
+
+    function_args = zip(source_dirs,images,target_dirs,params)
 
     # use a multi-processing pool to get the work done
     pool = mp.Pool()
     pool.map(
-        check_site_and_delete_star,
+        check_site_and_move_star,
         function_args
     )
     pool.close()
