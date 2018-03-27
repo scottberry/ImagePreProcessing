@@ -85,10 +85,11 @@ def main(args):
                         'A' + matches.group('a') +
                         'Z' + matches.group('z') +
                         matches.group('c') + '.tif')
-            print old_name, new_name
             files_to_link.append((old_name,new_name))
 
-#    print files_to_link
+    for fname_pair in files_to_link:
+        os.link(os.path(args.source_dir,fname_pair[0]),
+                os.path(args.target_dir,fname_pair[1]))
 
     return
 
