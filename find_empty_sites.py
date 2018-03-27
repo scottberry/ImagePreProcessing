@@ -132,6 +132,7 @@ def main(args):
         os.makedirs(args.target_dir)
 
     images = [os.path.basename(full_path) for full_path in glob.glob(args.source_dir + '*C01.tif')]
+    logger.debug('found %d images in %s',len(images),args.source_dir)
     source_dirs = [args.source_dir for image in images]
     target_dirs = [args.target_dir for image in images]
     params = [args.move for image in images]
