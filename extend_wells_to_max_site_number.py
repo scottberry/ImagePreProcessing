@@ -4,14 +4,12 @@ import time
 import warnings
 import logging
 import argparse
-import numpy as np
 import os
 import re
 import glob
 import random
 from MultiProcessingLog import MultiProcessingLog
 from operator import itemgetter
-
 
 warnings.filterwarnings('ignore')
 logger = logging.getLogger()
@@ -61,7 +59,7 @@ def main(args):
     # setup logging
     formatter = logging.Formatter('%(asctime)s %(levelname)s | %(filename)s/%(funcName)s: %(message)s')
     mp_log = MultiProcessingLog(
-        os.path.join(args.source_dir,
+        os.path.join(args.target_dir,
                   'extend-wells-to-max-site-number' +
                   time.strftime('%Y%m%d-%H%M%S') +
                   '.log'),
@@ -78,14 +76,18 @@ def main(args):
 
     # find number of sites per well
     unique_wells = sorted(list(set([i[0] for i in well_site_names])))
+    logger.info('found %d wells in %s', len(unique_wells), args.source_dir)
     max_sites_per_well = []
     for well in unique_wells:
         sites = [x for x in well_site_names if x[0] == well]
-        max_sites_per_well.append(max(sites,key=itemgetter(1)))
+        n = max(sites,key=itemgetter(1))
+        max_sites_per_well.append(n)
+        logger.debug('well %s has %d sites', well, n[1])
 
     # find maximum number of sites and select the next largest value from list
     required_sites = max(max_sites_per_well,key=itemgetter(1))[1]
     n_sites = next(v for i,v in enumerate(possible_site_numbers) if v >= required_sites)
+    logger.info('%d sites are required, generating links for %d sites per well', required_sites, n_sites)
 
     # generate a list of (well, site) pairs to add
     well_site_names_to_add = []
@@ -105,6 +107,7 @@ def main(args):
     files_to_link = []
     empty_files = [os.path.basename(full_path) for full_path in glob.glob(args.empty_dir + '*.tif')]
 
+    logger.debug('selecting random sites from %s',args.empty_dir)
     for well, site in well_site_names_to_add:
         empty_site = re.match(pattern,random.choice(empty_files))
         for basefile in filenames_single_site:
@@ -141,16 +144,21 @@ def main(args):
             files_to_link.append((source_file, link_name))
 
     for source, link in files_to_link:
-        try:
-            os.link(os.path(args.source_dir,source),
-                    os.path(args.target_dir,link))
-        except OSError:
-            logger.warning(
-                'could not link %s to %s',
-                os.path(args.target_dir,link),
-                os.path(args.source_dir,source)
-            )
-            pass
+        logger.info(
+            'creating hard link %s to file %s',
+            os.path.join(args.target_dir,link),
+            os.path.join(args.empty_dir,source)
+        )
+#        try:
+#            os.link(os.path.join(args.empty_dir,source),
+#                    os.path.join(args.target_dir,link))
+#        except OSError:
+#            logger.warning(
+#                'could not link %s to %s',
+#                os.path.join(args.target_dir,link),
+#                os.path.join(args.empty_dir,source)
+#            )
+#            pass
 
     return
 
