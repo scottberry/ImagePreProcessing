@@ -93,7 +93,7 @@ def main(args):
     well_site_names_to_add = []
     for well in unique_wells:
         last_real_site = [x[1] for x in max_sites_per_well if x[0] == well]
-        well_site_names_to_add.extend([(well,s) for s in range(last_real_site[0],n_sites + 1)])
+        well_site_names_to_add.extend([(well,s) for s in range(last_real_site[0] + 1,n_sites + 1)])
 
     # convert this list to filenames for all channels
     # 1. use the first site as a template for new filenames
@@ -149,16 +149,16 @@ def main(args):
             os.path.join(args.target_dir,link),
             os.path.join(args.empty_dir,source)
         )
-#        try:
-#            os.link(os.path.join(args.empty_dir,source),
-#                    os.path.join(args.target_dir,link))
-#        except OSError:
-#            logger.warning(
-#                'could not link %s to %s',
-#                os.path.join(args.target_dir,link),
-#                os.path.join(args.empty_dir,source)
-#            )
-#            pass
+        try:
+            os.link(os.path.join(args.empty_dir,source),
+                    os.path.join(args.target_dir,link))
+        except OSError:
+            logger.warning(
+                'could not link %s to %s',
+                os.path.join(args.target_dir,link),
+                os.path.join(args.empty_dir,source)
+            )
+            pass
 
     return
 
