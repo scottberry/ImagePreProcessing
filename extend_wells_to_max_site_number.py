@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 import time
 import warnings
 import logging
@@ -69,7 +67,7 @@ def main(args):
     logger.addHandler(mp_log)
 
     # get all names for channel 01
-    all_filenames_C01 = sorted([os.path.basename(full_path) for full_path in glob.glob(args.source_dir + '*C01.tif')])
+    all_filenames_C01 = sorted([os.path.basename(full_path) for full_path in glob.glob(args.source_dir + '*C01.png')])
 
     # get unique well and sites
     well_site_names = [(m.group('well'), int(m.group('site'))) for f in all_filenames_C01 for m in [re.match(pattern,f)] if m]
@@ -105,7 +103,7 @@ def main(args):
         )
     )
     files_to_link = []
-    empty_files = [os.path.basename(full_path) for full_path in glob.glob(args.empty_dir + '*.tif')]
+    empty_files = [os.path.basename(full_path) for full_path in glob.glob(args.empty_dir + '*.png')]
 
     logger.debug('selecting random sites from %s',args.empty_dir)
     for well, site in well_site_names_to_add:
@@ -120,7 +118,7 @@ def main(args):
                 'L' + new_site.group('l') +
                 'A' + new_site.group('a') +
                 'Z' + new_site.group('z') +
-                new_site.group('c') + '.tif'
+                new_site.group('c') + '.png'
             )
 
             # add a couple of catches to account for differing dimensions between sites
@@ -139,7 +137,7 @@ def main(args):
                 'L' + new_site.group('l') +
                 'A' + new_site.group('a') +
                 'Z' + z_plane +
-                new_site.group('c') + '.tif'
+                new_site.group('c') + '.png'
             )
             files_to_link.append((source_file, link_name))
 
