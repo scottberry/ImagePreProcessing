@@ -71,11 +71,17 @@ def main(args):
 
     # find tiff files and keep track of the source directory structure
     for root, dirs, files in walk(args.source_dir):
-        for file in files:
-            if file.endswith('.tif'):
-                tiff_paths.append(path.join(root, file))
+        for fyle in files:
+            if fyle.endswith('.tif'):
+                tiff_paths.append(path.join(root, fyle))
+                
+                # Hack to catch inputs ending with and without a /
+                if args.source_dir.endswith('/'):
+                    soure_path_length = len(args.source_dir)
+                else:
+                    soure_path_length = len(args.source_dir) + 1
                 output_dirs.append(
-                    path.join(args.output_dir, root[len(args.source_dir):])
+                    path.join(args.output_dir, root[soure_path_length:])
                 )
 
     # re-create the directory structure in output_dir
