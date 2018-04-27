@@ -80,7 +80,7 @@ def main(args):
         sites = [x for x in well_site_names if x[0] == well]
         n = max(sites,key=itemgetter(1))
         max_sites_per_well.append(n)
-        logger.debug('well %s has %d sites', well, n[1])
+        logger.debug('well %s has maximum site number of %d', well, n[1])
 
     # find maximum number of sites and select the next largest value from list
     required_sites = max(max_sites_per_well,key=itemgetter(1))[1]
@@ -88,10 +88,14 @@ def main(args):
     logger.info('%d sites are required, generating links for %d sites per well', required_sites, n_sites)
 
     # generate a list of (well, site) pairs to add
+    # also include possibly missing sites < max number of sites per well
     well_site_names_to_add = []
     for well in unique_wells:
-        last_real_site = [x[1] for x in max_sites_per_well if x[0] == well]
-        well_site_names_to_add.extend([(well,s) for s in range(last_real_site[0] + 1,n_sites + 1)])
+        existing_sites = set([x[1] for x in well_site_names if x[0] == well])
+        all_required_sites = set(range(1, n_sites + 1))
+        well_site_names_to_add.extend(
+            [(well,s) for s in all_required_sites.difference(existing_sites)]
+        )
 
     # convert this list to filenames for all channels
     # 1. use the first site as a template for new filenames
