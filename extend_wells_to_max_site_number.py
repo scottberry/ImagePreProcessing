@@ -6,7 +6,6 @@ import os
 import re
 import glob
 import random
-from MultiProcessingLog import MultiProcessingLog
 from operator import itemgetter
 
 warnings.filterwarnings('ignore')
@@ -55,16 +54,21 @@ def main(args):
         os.makedirs(args.target_dir)
 
     # setup logging
-    formatter = logging.Formatter('%(asctime)s %(levelname)s | %(filename)s/%(funcName)s: %(message)s')
-    mp_log = MultiProcessingLog(
-        os.path.join(args.target_dir,
-                  'extend-wells-to-max-site-number' +
-                  time.strftime('%Y%m%d-%H%M%S') +
-                  '.log'),
-        'w', 0, 0
+
+    logger = logging.getLogger('extend_wells_to_max_site_number')
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(
+        os.path.join(
+            args.target_dir,
+            'extend-wells-to-max-site-number-' +
+            time.strftime('%Y%m%d-%H%M%S') +
+            '.log')
     )
-    mp_log.setFormatter(formatter)
-    logger.addHandler(mp_log)
+    fh.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s | %(filename)s/%(funcName)s: %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
 
     # get all names for channel 01
     all_filenames_C01 = sorted([os.path.basename(full_path) for full_path in glob.glob(args.source_dir + '*C01.png')])
