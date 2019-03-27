@@ -13,9 +13,9 @@ yokogawa_pattern = (r'(?P<stem>.+)_(?P<well>[A-Z]\d{2})_T(?P<t>\d+)' +
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        prog='extend_plate_to_full_size',
-        description=('Fills partially complete plates by matching '
-                     'the number of wells/sites from a set of input '
+        prog='extend_plates_to_full_size',
+        description=('Fills partially complete plates by comparing '
+                     'the number of wells/sites between a set of input '
                      'plates. Input directory should contain subfolders '
                      'called "plate_name"/images/.')
     )
@@ -26,21 +26,22 @@ def parse_arguments():
     return(parser.parse_args())
 
 
-def initialise_logger():
+def initialise_logger(log_dir):
 
-    logger = logging.getLogger('extend_plate_to_full_size')
+    logger = logging.getLogger('extend_plates_to_full_size')
+    log_file = os.path.join(log_dir,
+        'extend_plates_to_full_size-' +
+        time.strftime('%Y%m%d-%H%M%S') +
+        '.log')
     logger.setLevel(logging.INFO)
-    fh = logging.FileHandler(
-        os.path.join(
-            'extend_plate_to_full_size-' +
-            time.strftime('%Y%m%d-%H%M%S') +
-            '.log')
-    )
+    fh = logging.FileHandler(log_file)
     fh.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s %(levelname)s ' +
                                   '| %(filename)s/%(funcName)s: %(message)s')
     fh.setFormatter(formatter)
     logger.addHandler(fh)
+
+    print "Writing log file to {}".format(log_file)
 
     return(logger)
 
@@ -57,7 +58,7 @@ def list_all_files_for_well(src_dir, well):
 
 def main(args):
 
-    logger = initialise_logger()
+    logger = initialise_logger(args.plates_dir)
 
     # find all "images" directories
     logger.info('Scanning source directory for "images" folders')
